@@ -28,12 +28,6 @@ The workflow will show:
 - ⚠️ Warnings for missing components
 - Estimated parameter count
 
-Example output: 
-## Model Results
-
-Latest test run results:
-- Model Accuracy: 99.41%%
-
 
 ## Latest Results
 
