@@ -46,5 +46,13 @@ The workflow will show:
 - BatchNorm: True
 - Dropout: True
 - FC/GAP: True
+- Total Parameters: 15816
+
+- Model Accuracy: 99.41%%
+
+### Architecture Check Results
+- BatchNorm: True
+- Dropout: True
+- FC/GAP: True
 - Total Parameters: Parameters:
 
