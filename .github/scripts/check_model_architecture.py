@@ -45,18 +45,21 @@ def check_model_architecture(file_content):
                 print(f"Warning: Import error - {e}")
     
     for node in ast.walk(tree):
-        # Check for BatchNorm
-        if isinstance(node, ast.Call) and hasattr(node.func, 'id'):
-            if 'BatchNorm' in node.func.id:
-                findings['has_batchnorm'] = True
-            
-            # Check for Dropout
-            elif 'Dropout' in node.func.id:
-                findings['has_dropout'] = True
-            
-            # Check for FC/GAP
-            elif 'Linear' in node.func.id or 'AdaptiveAvgPool' in node.func.id:
-                findings['has_fc_or_gap'] = True
+        # Check for layer assignments in __init__
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Attribute) and isinstance(node.value, ast.Call):
+                    # Check for BatchNorm
+                    if hasattr(node.value.func, 'attr') and 'BatchNorm' in node.value.func.attr:
+                        findings['has_batchnorm'] = True
+                    
+                    # Check for Dropout
+                    elif hasattr(node.value.func, 'attr') and 'Dropout' in node.value.func.attr:
+                        findings['has_dropout'] = True
+                    
+                    # Check for FC/GAP
+                    elif hasattr(node.value.func, 'attr') and ('Linear' in node.value.func.attr or 'AdaptiveAvgPool' in node.value.func.attr):
+                        findings['has_fc_or_gap'] = True
         
         # Count parameters
         findings['total_params'] += count_parameters(node)
@@ -70,6 +73,11 @@ def main():
     
     # Find all Python files in the project
     model_files = list(Path('.').rglob('*model*.py'))
+    test_files = list(Path('.').rglob('*test*.py'))
+    check_files = list(Path('.').rglob('*check*.py'))
+    
+    # Exclude test and check files
+    model_files = [f for f in model_files if f not in test_files and f not in check_files]
     
     if not model_files:
         print("❌ No model files found!")

@@ -1,6 +1,6 @@
 # ML Model Architecture Checker
 
-This repository contains GitHub Actions workflows to automatically check ML model architectures for best practices and common requirements.
+This repository contains GitHub Actions workflows to automatically check ML model architectures for best practices and common requirements. It specifically analyzes MNIST model implementations for proper architecture components.
 
 ## Installation
 
