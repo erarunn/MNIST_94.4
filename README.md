@@ -34,3 +34,15 @@ Example output:
 Latest test run results:
 - Model Accuracy: 99.41%%
 
+
+## Latest Results
+
+### Model Performance
+- Model Accuracy: 99.41%%
+
+### Architecture Check Results
+- BatchNorm: True
+- Dropout: True
+- FC/GAP: True
+- Total Parameters: Parameters:
+
