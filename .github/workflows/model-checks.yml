@@ -44,18 +44,16 @@ jobs:
         echo "HAS_BATCHNORM=$(grep 'BatchNorm:' arch_check_output.txt | awk '{print $3}')" >> $GITHUB_ENV
         echo "HAS_DROPOUT=$(grep 'Dropout:' arch_check_output.txt | awk '{print $3}')" >> $GITHUB_ENV
         echo "HAS_FC_GAP=$(grep 'FC/GAP:' arch_check_output.txt | awk '{print $3}')" >> $GITHUB_ENV
-        echo "TOTAL_PARAMS=$(grep 'Estimated Parameters:' arch_check_output.txt | awk '{print $3}')" >> $GITHUB_ENV
+        echo "TOTAL_PARAMS=$(grep 'Total parameters:' model_output.txt | awk '{print $3}' | tr -d ',')" >> $GITHUB_ENV
 
     - name: Run Model and Get Accuracy
       run: |
         python model.py > model_output.txt
         echo "MODEL_ACC=$(grep 'Model accuracy' model_output.txt | awk '{print $3}')" >> $GITHUB_ENV
+        echo "TOTAL_PARAMS=$(grep 'Total parameters:' model_output.txt | awk '{print $3}' | tr -d ',')" >> $GITHUB_ENV
 
     - name: Update README with Results
       run: |
-        # Read current README
-        content=$(cat README.md)
-        
         # Create results section
         results_section="## Latest Results\n\n"
         results_section+="### Model Performance\n"
@@ -64,16 +62,10 @@ jobs:
         results_section+="- BatchNorm: ${HAS_BATCHNORM}\n"
         results_section+="- Dropout: ${HAS_DROPOUT}\n"
         results_section+="- FC/GAP: ${HAS_FC_GAP}\n"
-        results_section+="- Total Parameters: ${TOTAL_PARAMS}\n"
+        results_section+="- Total Parameters: ${TOTAL_PARAMS:=0}\n"
         
-        # Check if Results section exists
-        if grep -q "## Latest Results" README.md; then
-          # Update existing results section
-          sed -i "/## Latest Results/,/##/c\\${results_section}" README.md
-        else
-          # Add new results section
-          echo -e "\n${results_section}" >> README.md
-        fi
+        # Update the README
+        sed -i "/## Latest Results/,/##/c\\${results_section}" README.md
         
     - name: Commit README changes
       run: |
