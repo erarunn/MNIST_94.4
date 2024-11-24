@@ -17,7 +17,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
-        cache: 'pip'  # Enable pip caching
+        cache: 'pip'
         
     - name: Install dependencies
       run: |
@@ -37,6 +37,33 @@ jobs:
     - name: Run Model Architecture Checks
       run: |
         python .github/scripts/check_model_architecture.py
+
+    - name: Run Model and Get Accuracy
+      run: |
+        python model.py > model_output.txt
+        echo "MODEL_ACC=$(grep 'Model accuracy' model_output.txt | awk '{print $3}')" >> $GITHUB_ENV
+
+    - name: Update README with Model Accuracy
+      run: |
+        # Read current README
+        content=$(cat README.md)
+        
+        # Check if Results section exists
+        if grep -q "## Model Results" README.md; then
+          # Update existing results section
+          sed -i "/## Model Results/,/##/c\## Model Results\n\nLatest test run results:\n- Model Accuracy: ${MODEL_ACC}%\n" README.md
+        else
+          # Add new results section
+          echo -e "\n## Model Results\n\nLatest test run results:\n- Model Accuracy: ${MODEL_ACC}%\n" >> README.md
+        fi
+        
+    - name: Commit README changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add README.md
+        git commit -m "Update README with latest model accuracy: ${MODEL_ACC}%" || echo "No changes to commit"
+        git push || echo "No changes to push"
 
     - name: Cache pip packages
       uses: actions/cache@v3

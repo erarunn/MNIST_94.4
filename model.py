@@ -84,11 +84,12 @@ def main():
         batch_size=batch_size, shuffle=True, **kwargs)
     
     # Load pre-trained model
-    try:
+    if device.type == 'cuda':
         model.load_state_dict(torch.load('best_model.pth'))
-        print("Loaded pre-trained model successfully")
-    except:
-        print("No pre-trained model found")
+        
+    else:
+        model.load_state_dict(torch.load('best_model.pth', map_location=torch.device('cpu')))
+       
     
     model.eval()
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)

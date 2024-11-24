@@ -5,17 +5,34 @@ from pathlib import Path
 import torch
 from torchsummary import summary
 
+def calculate_conv2d_params(in_channels, out_channels, kernel_size):
+    """Calculate parameters for Conv2d layer"""
+    if isinstance(kernel_size, (int, float)):
+        kernel_size = (kernel_size, kernel_size)
+    return (in_channels * out_channels * kernel_size[0] * kernel_size[1]) + out_channels
+
 def count_parameters(node):
     """Count potential parameters in layer definitions"""
     param_count = 0
     if isinstance(node, ast.Call):
-        # Common layer types that have parameters
-        param_layers = ['Conv2d', 'Linear', 'LSTM', 'GRU', 'Dense', 'ConvTranspose2d', 'BatchNorm2d']
-        if hasattr(node.func, 'id') and node.func.id in param_layers:
-            # Basic parameter estimation based on common args
-            for arg in node.args:
-                if isinstance(arg, ast.Num):
-                    param_count += arg.n
+        if hasattr(node.func, 'attr'):
+            # Conv2d layers
+            if node.func.attr == 'Conv2d' and len(node.args) >= 3:
+                in_channels = ast.literal_eval(node.args[0])
+                out_channels = ast.literal_eval(node.args[1])
+                kernel_size = ast.literal_eval(node.args[2])
+                param_count += calculate_conv2d_params(in_channels, out_channels, kernel_size)
+            
+            # BatchNorm2d layers
+            elif node.func.attr == 'BatchNorm2d' and len(node.args) >= 1:
+                num_features = ast.literal_eval(node.args[0])
+                param_count += 2 * num_features  # gamma and beta parameters
+            
+            # Linear layers
+            elif node.func.attr == 'Linear' and len(node.args) >= 2:
+                in_features = ast.literal_eval(node.args[0])
+                out_features = ast.literal_eval(node.args[1])
+                param_count += (in_features * out_features) + out_features
     return param_count
 
 def check_model_architecture(file_content):
@@ -60,9 +77,9 @@ def check_model_architecture(file_content):
                     # Check for FC/GAP
                     elif hasattr(node.value.func, 'attr') and ('Linear' in node.value.func.attr or 'AdaptiveAvgPool' in node.value.func.attr):
                         findings['has_fc_or_gap'] = True
-        
-        # Count parameters
-        findings['total_params'] += count_parameters(node)
+                    
+                    # Count parameters for this layer
+                    findings['total_params'] += count_parameters(node.value)
     
     return findings
 
@@ -121,9 +138,9 @@ def main():
             all_checks_passed = False
         
         # Check parameter count
-        print(f"✓ Estimated Parameters: {findings['total_params']}")
-        if findings['total_params'] > 1e8:  # 100M parameters
-            print("⚠️  Warning: Model might be too large (>100M parameters)")
+        print(f"✓ Estimated Parameters: {findings['total_params']:,}")
+        if findings['total_params'] > 20000:  # Changed threshold to 20,000
+            print("⚠️  Warning: Model has more than 20,000 parameters")
             all_checks_passed = False
     
     if not all_checks_passed:
