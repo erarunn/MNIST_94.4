@@ -59,16 +59,34 @@ def test(model, device, test_loader):
         100. * correct / len(test_loader.dataset)))
     return val_acc
 
+def load_model(model, path, device):
+    try:
+        # Load model with weights_only=True to address the warning
+        state_dict = torch.load(
+            path, 
+            map_location=device,
+            weights_only=True  # Add this parameter
+        )
+        model.load_state_dict(state_dict)
+        print(f"Successfully loaded model from {path}")
+        return True
+    except Exception as e:
+        print(f"Error loading model: {str(e)}")
+        return False
+
 def main():
     # CUDA setup
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
+    print(f"Using device: {device}")
     
     # Model setup
     torch.manual_seed(1)
     model = Net().to(device)
     
     # Print model summary
+    print("\nModel Architecture:")
+    print("="*50)
     summary(model, input_size=(1, 28, 28))
     
     # Data loader setup
@@ -84,19 +102,19 @@ def main():
         batch_size=batch_size, shuffle=True, **kwargs)
     
     # Load pre-trained model
-    if device.type == 'cuda':
-        model.load_state_dict(torch.load('best_model.pth'))
-        
-    else:
-        model.load_state_dict(torch.load('best_model.pth', map_location=torch.device('cpu')))
-       
+    if not load_model(model, 'best_model.pth', device):
+        print("Failed to load model. Exiting.")
+        return
     
     model.eval()
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     
     # Test the model
     val_acc = test(model, device, test_loader)
     print(f'Model accuracy: {val_acc:.2f}%')
+
+    # Count parameters
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f'\nTotal parameters: {total_params:,}')
 
 if __name__ == '__main__':
     main()
