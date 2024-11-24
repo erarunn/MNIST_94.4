@@ -40,25 +40,39 @@ jobs:
         
     - name: Run Model Architecture Checks
       run: |
-        python .github/scripts/check_model_architecture.py
+        python .github/scripts/check_model_architecture.py > arch_check_output.txt
+        echo "HAS_BATCHNORM=$(grep 'BatchNorm:' arch_check_output.txt | awk '{print $3}')" >> $GITHUB_ENV
+        echo "HAS_DROPOUT=$(grep 'Dropout:' arch_check_output.txt | awk '{print $3}')" >> $GITHUB_ENV
+        echo "HAS_FC_GAP=$(grep 'FC/GAP:' arch_check_output.txt | awk '{print $3}')" >> $GITHUB_ENV
+        echo "TOTAL_PARAMS=$(grep 'Estimated Parameters:' arch_check_output.txt | awk '{print $3}')" >> $GITHUB_ENV
 
     - name: Run Model and Get Accuracy
       run: |
         python model.py > model_output.txt
         echo "MODEL_ACC=$(grep 'Model accuracy' model_output.txt | awk '{print $3}')" >> $GITHUB_ENV
 
-    - name: Update README with Model Accuracy
+    - name: Update README with Results
       run: |
         # Read current README
         content=$(cat README.md)
         
+        # Create results section
+        results_section="## Latest Results\n\n"
+        results_section+="### Model Performance\n"
+        results_section+="- Model Accuracy: ${MODEL_ACC}%\n\n"
+        results_section+="### Architecture Check Results\n"
+        results_section+="- BatchNorm: ${HAS_BATCHNORM}\n"
+        results_section+="- Dropout: ${HAS_DROPOUT}\n"
+        results_section+="- FC/GAP: ${HAS_FC_GAP}\n"
+        results_section+="- Total Parameters: ${TOTAL_PARAMS}\n"
+        
         # Check if Results section exists
-        if grep -q "## Model Results" README.md; then
+        if grep -q "## Latest Results" README.md; then
           # Update existing results section
-          sed -i "/## Model Results/,/##/c\## Model Results\n\nLatest test run results:\n- Model Accuracy: ${MODEL_ACC}%\n" README.md
+          sed -i "/## Latest Results/,/##/c\\${results_section}" README.md
         else
           # Add new results section
-          echo -e "\n## Model Results\n\nLatest test run results:\n- Model Accuracy: ${MODEL_ACC}%\n" >> README.md
+          echo -e "\n${results_section}" >> README.md
         fi
         
     - name: Commit README changes
@@ -66,7 +80,7 @@ jobs:
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git add README.md
-        git commit -m "Update README with latest model accuracy: ${MODEL_ACC}%" || echo "No changes to commit"
+        git commit -m "Update README with latest results (Accuracy: ${MODEL_ACC}%, Params: ${TOTAL_PARAMS})" || echo "No changes to commit"
         
     - name: Push changes
       uses: ad-m/github-push-action@master
